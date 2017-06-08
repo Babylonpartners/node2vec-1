@@ -103,7 +103,7 @@ class Graph:
         return
 
 
-class WalkCollection(object):
+class WalkSimulation(object):
 
     def __init__(self, G, num_walks, walk_length, **kwargs):
 

@@ -11,7 +11,7 @@ Knowledge Discovery and Data Mining (KDD), 2016
 
 import argparse
 
-from node2vec.core import learn_embeddings, read_graph, Graph, WalkCollection
+from node2vec.core import learn_embeddings, read_graph, Graph, WalkSimulation
 
 
 def parse_args():
@@ -74,7 +74,7 @@ def main():
     nx_graph = read_graph(**args)
     G = Graph(nx_graph, **args)
     G.preprocess_transition_probs()
-    walks = WalkCollection(G, **args)
+    walks = WalkSimulation(G, **args)
     learn_embeddings(walks, **args)
 
 
