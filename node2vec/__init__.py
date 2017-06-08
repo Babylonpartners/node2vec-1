@@ -11,7 +11,7 @@ Knowledge Discovery and Data Mining (KDD), 2016
 
 import argparse
 
-from node2vec.core import learn_embeddings, read_graph, Graph
+from node2vec.core import learn_embeddings, read_graph, Graph, WalkCollection
 
 
 def parse_args():
@@ -57,7 +57,7 @@ def parse_args():
                         action='store_false')
     parser.set_defaults(weighted=False)
 
-    parser.add_argument('--directed', dest='directed', action='store_true',
+    parser.add_argument('--directed', dest='is_directed', action='store_true',
                         help='Graph is (un)directed. Default is undirected.')
     parser.add_argument('--undirected', dest='undirected',
                         action='store_false')
@@ -70,12 +70,12 @@ def main():
     """
     Pipeline for representational learning for all nodes in a graph.
     """
-    args = parse_args()
-    nx_graph = read_graph(**args.__dict__)
-    g = Graph(nx_graph, args.directed, args.p, args.q)
-    g.preprocess_transition_probs()
-    walks = g.simulate_walks(args.num_walks, args.walk_length)
-    learn_embeddings(walks, **args.__dict__)
+    args = parse_args().__dict__
+    nx_graph = read_graph(**args)
+    G = Graph(nx_graph, **args)
+    G.preprocess_transition_probs()
+    walks = WalkCollection(G, **args)
+    learn_embeddings(walks, **args)
 
 
 if __name__ == "__main__":

@@ -1,15 +1,17 @@
 from __future__ import print_function
 
+import logging
 import random
 
 import networkx as nx
 import numpy as np
+
 from gensim.models import Word2Vec
 
 
 class Graph:
 
-    def __init__(self, nx_G, is_directed, p, q):
+    def __init__(self, nx_G, is_directed, p, q, **kwargs):
         self.G = nx_G
         self.is_directed = is_directed
         self.p = p
@@ -44,23 +46,6 @@ class Graph:
                 break
 
         return walk
-
-    def simulate_walks(self, num_walks, walk_length):
-        """
-        Repeatedly simulate random walks from each node.
-        """
-        G = self.G
-        walks = []
-        nodes = list(G.nodes())
-        print('Walk iteration:')
-        for walk_iter in range(num_walks):
-            print(str(walk_iter+1), '/', str(num_walks))
-            random.shuffle(nodes)
-            for node in nodes:
-                walks.append(self.node2vec_walk(walk_length=walk_length,
-                                                start_node=node))
-
-        return walks
 
     def get_alias_edge(self, src, dst):
         """
@@ -118,6 +103,30 @@ class Graph:
         return
 
 
+class WalkCollection(object):
+
+    def __init__(self, G, num_walks, walk_length, **kwargs):
+
+        self.G = G
+        self.num_walks = num_walks
+        self.walk_length = walk_length
+        self.walk_log = 0
+
+    def __iter__(self):
+
+        walks = []
+        nodes = list(self.G.G.nodes())
+        logging.info('Walk iteration{}:'.format(self.walk_log))
+        self.walk_log += 1
+        for walk_iter in range(self.num_walks):
+            logging.debug('%s/%s', str(walk_iter + 1), str(self.num_walks))
+            random.shuffle(nodes)
+            for node in nodes:
+                yield [str(x) for x in
+                       self.G.node2vec_walk(walk_length=self.walk_length,
+                                            start_node=node)]
+
+
 def alias_setup(probs):
     """
     Compute utility lists for non-uniform sampling from discrete distributions.
@@ -169,12 +178,9 @@ def learn_embeddings(walks, dimensions, window_size, workers, n_iter,
     """
     Learn embeddings by optimizing the Skipgram objective using SGD.
     """
-    walks = [[str(stride) for stride in walk] for walk in walks]
     model = Word2Vec(walks, size=dimensions, window=window_size, min_count=0,
                      sg=1, workers=workers, iter=n_iter)
     model.wv.save_word2vec_format(output_path)
-
-    return
 
 
 def read_graph(input_path, weighted, directed, **kwargs):
