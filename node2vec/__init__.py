@@ -10,9 +10,8 @@ Knowledge Discovery and Data Mining (KDD), 2016
 """
 
 import argparse
-import networkx as nx
-import node2vec
-from gensim.models import Word2Vec
+
+from node2vec.core import learn_embeddings, read_graph, Graph
 
 
 def parse_args():
@@ -22,10 +21,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run node2vec.")
 
     parser.add_argument('--input', nargs='?', default='graph/karate.edgelist',
-                        help='Input graph path')
+                        dest='input_path', help='Input graph path')
 
     parser.add_argument('--output', nargs='?', default='emb/karate.emb',
-                        help='Embeddings path')
+                        dest='output_path', help='Embeddings path')
 
     parser.add_argument('--dimensions', type=int, default=128,
                         help='Number of dimensions. Default is 128.')
@@ -39,7 +38,7 @@ def parse_args():
     parser.add_argument('--window-size', type=int, default=10,
                         help='Context size for optimization. Default is 10.')
 
-    parser.add_argument('--iter', default=1, type=int,
+    parser.add_argument('--iter', default=1, type=int, dest='n_iter',
                         help='Number of epochs in SGD')
 
     parser.add_argument('--workers', type=int, default=8,
@@ -67,49 +66,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def read_graph():
-    """
-    Reads the input network in networkx.
-    """
-    if args.weighted:
-        G = nx.read_edgelist(args.input, nodetype=int,
-                             data=(('weight', float),),
-                             create_using=nx.DiGraph())
-    else:
-        G = nx.read_edgelist(args.input, nodetype=int,
-                             create_using=nx.DiGraph())
-        for edge in G.edges():
-            G[edge[0]][edge[1]]['weight'] = 1
-
-    if not args.directed:
-        G = G.to_undirected()
-
-    return G
-
-
-def learn_embeddings(walks):
-    """
-    Learn embeddings by optimizing the Skipgram objective using SGD.
-    """
-    walks = [[str(stride) for stride in walk] for walk in walks]
-    model = Word2Vec(walks, size=args.dimensions, window=args.window_size,
-                     min_count=0, sg=1, workers=args.workers, iter=args.iter)
-    model.wv.save_word2vec_format(args.output)
-
-    return
-
-
-def main(args):
+def main():
     """
     Pipeline for representational learning for all nodes in a graph.
     """
-    nx_G = read_graph()
-    G = node2vec.Graph(nx_G, args.directed, args.p, args.q)
-    G.preprocess_transition_probs()
-    walks = G.simulate_walks(args.num_walks, args.walk_length)
-    learn_embeddings(walks)
+    args = parse_args()
+    nx_graph = read_graph(**args.__dict__)
+    g = Graph(nx_graph, args.directed, args.p, args.q)
+    g.preprocess_transition_probs()
+    walks = g.simulate_walks(args.num_walks, args.walk_length)
+    learn_embeddings(walks, **args.__dict__)
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    main(args)
+    main()

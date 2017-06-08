@@ -1,7 +1,10 @@
 from __future__ import print_function
 
-import numpy as np
 import random
+
+import networkx as nx
+import numpy as np
+from gensim.models import Word2Vec
 
 
 class Graph:
@@ -33,10 +36,10 @@ class Graph:
                     walk.append(cur_nbrs[alias_draw(alias_nodes[cur][0],
                                                     alias_nodes[cur][1])])
                 else:
-                    prev = walk[-2]
-                    next = cur_nbrs[alias_draw(alias_edges[(prev, cur)][0],
-                        alias_edges[(prev, cur)][1])]
-                    walk.append(next)
+                    prv = walk[-2]
+                    nxt = cur_nbrs[alias_draw(alias_edges[(prv, cur)][0],
+                                              alias_edges[(prv, cur)][1])]
+                    walk.append(nxt)
             else:
                 break
 
@@ -99,7 +102,6 @@ class Graph:
             alias_nodes[node] = alias_setup(normalized_probs)
 
         alias_edges = {}
-        triads = {}
 
         if is_directed:
             for edge in G.edges():
@@ -119,7 +121,7 @@ class Graph:
 def alias_setup(probs):
     """
     Compute utility lists for non-uniform sampling from discrete distributions.
-    Refer to https://hips.seas.harvard.edu/blog/2013/03/03/the-alias-method-efficient-sampling-with-many-discrete-outcomes/
+    Refer to https://tinyurl.com/ybz6xlcr
     for details
     """
     K = len(probs)
@@ -160,3 +162,36 @@ def alias_draw(J, q):
         return kk
     else:
         return J[kk]
+
+
+def learn_embeddings(walks, dimensions, window_size, workers, n_iter,
+                     output_path, **kwargs):
+    """
+    Learn embeddings by optimizing the Skipgram objective using SGD.
+    """
+    walks = [[str(stride) for stride in walk] for walk in walks]
+    model = Word2Vec(walks, size=dimensions, window=window_size, min_count=0,
+                     sg=1, workers=workers, iter=n_iter)
+    model.wv.save_word2vec_format(output_path)
+
+    return
+
+
+def read_graph(input_path, weighted, directed, **kwargs):
+    """
+    Reads the input network in networkx.
+    """
+    if weighted:
+        G = nx.read_edgelist(input_path, nodetype=int,
+                             data=(('weight', float),),
+                             create_using=nx.DiGraph())
+    else:
+        G = nx.read_edgelist(input_path, nodetype=int,
+                             create_using=nx.DiGraph())
+        for edge in G.edges():
+            G[edge[0]][edge[1]]['weight'] = 1
+
+    if not directed:
+        G = G.to_undirected()
+
+    return G
