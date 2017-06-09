@@ -105,22 +105,25 @@ class Graph:
 
 class WalkSimulation(object):
 
-    def __init__(self, G, num_walks, walk_length, **kwargs):
+    def __init__(self, G, num_walks, walk_length, no_randomisation=False,
+                 **kwargs):
 
         self.G = G
         self.num_walks = num_walks
         self.walk_length = walk_length
+        self.shuffle = not no_randomisation
         self.walk_log = 0
 
     def __iter__(self):
 
         walks = []
-        nodes = list(self.G.G.nodes())
+        nodes = list(self.G.G.nodes()) if self.shuffle else self.G.G.nodes()
         logging.info('Walk iteration{}:'.format(self.walk_log))
         self.walk_log += 1
         for walk_iter in range(self.num_walks):
             logging.debug('%s/%s', str(walk_iter + 1), str(self.num_walks))
-            random.shuffle(nodes)
+            if self.shuffle:
+                random.shuffle(nodes)
             for node in nodes:
                 yield [str(x) for x in
                        self.G.node2vec_walk(walk_length=self.walk_length,
